@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DramaType Agent Console</title>
+<style>
+/* ── Reset & Base ───────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#181a20;--surface2:#1e2028;--surface3:#262830;
+  --border:#2a2d38;--border-active:#4a4d58;
+  --text:#e4e4e7;--text-dim:#9ca3af;--text-muted:#6b7280;
+  --accent:#6366f1;--accent-dim:#4f46e5;--accent-glow:rgba(99,102,241,.15);
+  --green:#22c55e;--green-dim:#16a34a;--green-bg:rgba(34,197,94,.1);
+  --red:#ef4444;--red-dim:#dc2626;--red-bg:rgba(239,68,68,.1);
+  --yellow:#eab308;--yellow-dim:#ca8a04;--yellow-bg:rgba(234,179,8,.1);
+  --cyan:#06b6d4;--cyan-dim:#0891b2;--cyan-bg:rgba(6,182,212,.1);
+  --radius:8px;--radius-lg:12px;
+}
+html{font-size:14px}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;
+  display:flex;flex-direction:column;
+}
+button{cursor:pointer;font:inherit;border:none;outline:none}
+a{color:var(--accent);text-decoration:none}
+
+/* ── Header ─────────────────────────────────────────── */
+.header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:16px 24px;display:flex;align-items:center;gap:20px;flex-shrink:0;
+}
+.header-left{flex:1}
+.header h1{font-size:18px;font-weight:700;letter-spacing:-.5px}
+.header h1 span{color:var(--accent)}
+.header .subtitle{font-size:12px;color:var(--text-dim);margin-top:2px}
+.header-right{display:flex;align-items:center;gap:12px}
+
+/* ── Provider Status ────────────────────────────────── */
+.provider-status{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface2);padding:8px 14px;border-radius:var(--radius);
+  font-size:12px;border:1px solid var(--border);
+}
+.provider-badge{
+  padding:2px 8px;border-radius:4px;font-weight:600;font-size:11px;
+  background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent-dim);
+}
+.provider-badge.ok{background:var(--green-bg);color:var(--green);border-color:var(--green-dim)}
+.provider-badge.warn{background:var(--yellow-bg);color:var(--yellow);border-color:var(--yellow-dim)}
+.provider-badge.err{background:var(--red-bg);color:var(--red);border-color:var(--red-dim)}
+.provider-status .sep{color:var(--border)}
+
+/* ── Controls ───────────────────────────────────────── */
+.controls{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:12px 24px;display:flex;gap:12px;align-items:flex-start;flex-shrink:0;
+}
+.controls textarea{
+  flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);
+  border-radius:var(--radius);padding:10px 12px;font-size:13px;resize:vertical;
+  min-height:42px;max-height:120px;font-family:inherit;line-height:1.5;
+}
+.controls textarea:focus{border-color:var(--accent);outline:none}
+.controls .btn-group{display:flex;gap:8px;flex-shrink:0}
+.btn{
+  padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:600;
+  transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dim)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-secondary{background:var(--surface3);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--border-active)}
+.btn-sm{padding:4px 10px;font-size:12px}
+
+/* ── Main Layout ────────────────────────────────────── */
+.main{
+  flex:1;display:grid;
+  grid-template-columns:340px 1fr 360px;
+  gap:0;overflow:hidden;
+}
+.panel{
+  overflow-y:auto;border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+}
+.panel:last-child{border-right:none}
+.panel-header{
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--text-dim);background:var(--surface);flex-shrink:0;
+  display:flex;align-items:center;gap:8px;
+}
+.panel-body{padding:16px;flex:1;overflow-y:auto}
+
+/* ── Empty State ────────────────────────────────────── */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;color:var(--text-muted);text-align:center;padding:40px;gap:12px;
+}
+.empty-state .icon{font-size:48px;opacity:.3}
+.empty-state p{font-size:13px;line-height:1.6}
+
+/* ── Quiz Panel (Left) ──────────────────────────────── */
+.quiz-header{
+  padding:12px 16px;background:var(--surface2);border-radius:var(--radius-lg);
+  margin-bottom:16px;
+}
+.quiz-header h3{font-size:15px;margin-bottom:4px}
+.quiz-header p{font-size:12px;color:var(--text-dim);line-height:1.5}
+.quiz-progress{
+  display:flex;gap:4px;margin-bottom:12px;
+}
+.quiz-dot{
+  width:100%;height:3px;border-radius:2px;background:var(--surface3);
+  transition:background .3s;
+}
+.quiz-dot.done{background:var(--green)}
+.quiz-dot.current{background:var(--accent)}
+
+.question-card{background:var(--surface2);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.question-bg{font-size:12px;color:var(--text-dim);margin-bottom:8px;line-height:1.5}
+.question-text{font-size:14px;font-weight:600;margin-bottom:14px;line-height:1.6}
+
+.option-btn{
+  display:block;width:100%;text-align:left;
+  padding:10px 14px;margin-bottom:8px;
+  background:var(--surface3);border:1px solid var(--border);
+  border-radius:var(--radius);font-size:13px;color:var(--text);
+  transition:all .15s;line-height:1.5;
+}
+.option-btn:hover{border-color:var(--accent);background:var(--accent-glow)}
+.option-btn.selected{border-color:var(--accent);background:var(--accent-glow);color:var(--accent)}
+.option-btn .label{font-weight:700;margin-right:6px}
+.option-btn .feedback{
+  display:none;margin-top:6px;font-size:11px;color:var(--text-dim);
+  border-top:1px solid var(--border);padding-top:6px;
+}
+.option-btn.selected .feedback{display:block}
+
+.quiz-nav{display:flex;justify-content:space-between;margin-top:12px}
+
+/* ── Result Card ────────────────────────────────────── */
+.result-card{
+  background:var(--surface2);border-radius:var(--radius-lg);
+  padding:20px;border:1px solid var(--accent-dim);
+}
+.result-card h3{color:var(--accent);font-size:16px;margin-bottom:4px}
+.result-card .quote{
+  font-style:italic;color:var(--text-dim);margin:12px 0;
+  padding-left:12px;border-left:2px solid var(--accent-dim);
+  font-size:13px;line-height:1.6;
+}
+.result-card .section{margin-top:12px}
+.result-card .section-title{font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;letter-spacing:.5px}
+.result-card .section-text{font-size:13px;line-height:1.6}
+.result-card .scenes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.result-card .scene-tag{
+  padding:3px 10px;background:var(--cyan-bg);color:var(--cyan);
+  border-radius:4px;font-size:11px;border:1px solid var(--cyan-dim);
+}
+
+/* ── Agent Steps (Center) ───────────────────────────── */
+.step-card{
+  background:var(--surface2);border-radius:var(--radius);
+  padding:12px;margin-bottom:10px;border-left:3px solid var(--border);
+  transition:border-color .2s;
+}
+.step-card.completed{border-left-color:var(--green)}
+.step-card.failed{border-left-color:var(--red)}
+.step-card.repair{border-left-color:var(--yellow)}
+.step-card.fallback{border-left-color:var(--yellow)}
+.step-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.step-index{
+  width:22px;height:22px;border-radius:50%;
+  background:var(--surface3);display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0;
+}
+.step-card.completed .step-index{background:var(--green-bg);color:var(--green)}
+.step-card.failed .step-index{background:var(--red-bg);color:var(--red)}
+.step-tag{
+  padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.3px;
+}
+.tag-knowledge{background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-dim)}
+.tag-llm{background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent-dim)}
+.tag-rag{background:var(--green-bg);color:var(--green);border:1px solid var(--green-dim)}
+.tag-repair{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-dim)}
+.tag-schema{background:rgba(168,85,247,.15);color:#a855f7;border:1px solid #7c3aed}
+.tag-safety{background:var(--red-bg);color:var(--red);border:1px solid var(--red-dim)}
+.tag-save{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid #16a34a}
+.tag-report{background:rgba(99,102,241,.1);color:#818cf8;border:1px solid #6366f1}
+.tag-inspect{background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-dim)}
+.step-status{margin-left:auto;font-size:11px;font-weight:600}
+.step-status.ok{color:var(--green)}
+.step-status.fail{color:var(--red)}
+.step-summary{font-size:12px;color:var(--text-dim);line-height:1.5}
+.step-obs{font-size:11px;color:var(--text-muted);margin-top:4px;font-family:'SF Mono',monospace}
+
+/* ── Fallback Banner ────────────────────────────────── */
+.fallback-banner{
+  background:var(--yellow-bg);border:1px solid var(--yellow-dim);
+  border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;
+  font-size:12px;color:var(--yellow);line-height:1.5;
+}
+.fallback-banner strong{display:block;margin-bottom:2px}
+
+/* ── Review Panel (Right) ───────────────────────────── */
+.review-section{margin-bottom:20px}
+.review-section h4{
+  font-size:11px;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--text-muted);margin-bottom:10px;
+  padding-bottom:6px;border-bottom:1px solid var(--border);
+}
+.metric-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 0;font-size:12px;
+}
+.metric-label{color:var(--text-dim)}
+.metric-value{font-weight:600}
+.metric-value.good{color:var(--green)}
+.metric-value.bad{color:var(--red)}
+.metric-value.warn{color:var(--yellow)}
+
+.evidence-card{
+  background:var(--surface2);border-radius:var(--radius);
+  padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--cyan-dim);
+}
+.evidence-card .ev-source{font-size:11px;font-weight:600;color:var(--cyan)}
+.evidence-card .ev-section{font-size:11px;color:var(--text-dim);margin:2px 0}
+.evidence-card .ev-quote{
+  font-size:11px;color:var(--text);line-height:1.5;
+  background:var(--surface3);padding:6px 8px;border-radius:4px;margin-top:4px;
+  font-family:'SF Mono',monospace;
+}
+
+/* ── Loading Spinner ────────────────────────────────── */
+.spinner{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .6s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Toast ──────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:var(--surface3);border:1px solid var(--border);
+  padding:10px 20px;border-radius:var(--radius);font-size:13px;
+  z-index:1000;animation:toastIn .3s ease;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.toast.error{border-color:var(--red-dim);color:var(--red)}
+.toast.success{border-color:var(--green-dim);color:var(--green)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-active)}
+</style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────── -->
+<header class="header">
+  <div class="header-left">
+    <h1><span>DramaType</span> Agent Console</h1>
+    <div class="subtitle">面向长视频平台的可追溯互动内容生产 Agent</div>
+  </div>
+  <div class="header-right">
+    <div class="provider-status" id="providerStatus">
+      <span class="spinner" id="statusSpinner"></span>
+      <span id="statusText">Loading...</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── Controls ────────────────────────────────────── -->
+<div class="controls">
+  <textarea id="goalInput" rows="2" placeholder="输入 Agent 目标...">请基于《雾港来信》知识库生成一个更有中文平台运营感、可审核、可追溯、无剧透的互动内容包。每道互动题都必须有素材依据，最终结果要适合平台运营人工审核。</textarea>
+  <div class="btn-group">
+    <button class="btn btn-secondary" id="btnCheckLLM" onclick="checkLLM()">
+      Check LLM
+    </button>
+    <button class="btn btn-primary" id="btnRunAgent" onclick="runAgent()">
+      Run Agent
+    </button>
+  </div>
+</div>
+
+<!-- ── Main 3-Column Layout ────────────────────────── -->
+<div class="main">
+
+  <!-- Left: User Experience -->
+  <div class="panel" id="quizPanel">
+    <div class="panel-header">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      User Experience
+    </div>
+    <div class="panel-body" id="quizBody">
+      <div class="empty-state">
+        <div class="icon">&#9654;</div>
+        <p>Click <strong>Run Agent</strong> to generate<br>an auditable interactive content pack.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center: Agent Console -->
+  <div class="panel" id="agentPanel">
+    <div class="panel-header">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Agent Console
+    </div>
+    <div class="panel-body" id="agentBody">
+      <div class="empty-state">
+        <div class="icon">&#9881;</div>
+        <p>Agent execution steps will appear here.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Evidence / Review -->
+  <div class="panel" id="reviewPanel">
+    <div class="panel-header">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Evidence / Review
+    </div>
+    <div class="panel-body" id="reviewBody">
+      <div class="empty-state">
+        <div class="icon">&#128203;</div>
+        <p>Review report and evidence<br>will appear here after generation.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ── Config ───────────────────────────────────────── */
+const API = 'http://127.0.0.1:8000';
+
+/* ── State ────────────────────────────────────────── */
+let agentResult = null;
+let quizState = { current: 0, answers: [], scores: {} };
+
+/* ── Helpers ──────────────────────────────────────── */
+const $ = (s) => document.querySelector(s);
+const el = (tag, cls, html) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html) e.innerHTML = html;
+  return e;
+};
+
+function toast(msg, type = '') {
+  const t = el('div', `toast ${type}`, msg);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function tagClass(tool) {
+  if (tool.includes('knowledge') || tool === 'rebuild_knowledge_index') return 'tag-knowledge';
+  if (tool.includes('llm')) return 'tag-llm';
+  if (tool.includes('rag')) return 'tag-rag';
+  if (tool.includes('repair')) return 'tag-repair';
+  if (tool.includes('validate')) return 'tag-schema';
+  if (tool.includes('safety')) return 'tag-safety';
+  if (tool.includes('save')) return 'tag-save';
+  if (tool.includes('report')) return 'tag-report';
+  return 'tag-inspect';
+}
+
+function tagLabel(tool) {
+  const map = {
+    knowledge_stats: 'Knowledge', rebuild_knowledge_index: 'Knowledge',
+    generate_content_pack_llm: 'LLM', generate_content_pack_rag: 'RAG',
+    generate_content_pack_rule_based: 'Rule',
+    repair_content_pack: 'Repair', validate_content_pack: 'Schema',
+    review_safety: 'Safety', save_content_pack: 'Save',
+    generate_review_report: 'Report', search_knowledge: 'Search',
+  };
+  return map[tool] || tool.replace(/_/g, ' ');
+}
+
+/* ── LLM Status ───────────────────────────────────── */
+async function checkLLM() {
+  const statusEl = $('#providerStatus');
+  const spinner = $('#statusSpinner');
+  spinner.style.display = 'inline-block';
+  $('#statusText').textContent = 'Checking...';
+
+  try {
+    const res = await fetch(`${API}/api/llm/status`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const cls = data.has_api_key ? 'ok' : 'warn';
+    const keyLabel = data.has_api_key ? 'Key OK' : 'No Key';
+    const warnings = data.warnings.length ? `<br>${data.warnings.join('<br>')}` : '';
+
+    statusEl.innerHTML = `
+      <span class="provider-badge ${cls}">${data.provider}</span>
+      <span style="color:var(--text-dim)">${data.model}</span>
+      <span class="sep">|</span>
+      <span class="provider-badge ${cls}">${keyLabel}</span>
+    `;
+
+    if (!data.has_api_key) {
+      toast('LLM key not configured. Agent may fallback to RAG.', 'error');
+    } else if (data.warnings.length) {
+      toast(data.warnings[0], 'error');
+    } else {
+      toast(`${data.provider} / ${data.model} ready`, 'success');
+    }
+
+    // Also run a quick test
+    if (data.has_api_key) {
+      try {
+        const testRes = await fetch(`${API}/api/llm/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: '只回复 OK' }),
+        });
+        const testData = await testRes.json();
+        if (testData.success) {
+          toast(`LLM test OK (${testData.latency_ms}ms)`, 'success');
+        } else {
+          toast(`LLM test failed: ${testData.error_message}`, 'error');
+        }
+      } catch (e) { /* silent */ }
+    }
+  } catch (e) {
+    spinner.style.display = 'none';
+    statusEl.innerHTML = `<span class="provider-badge err">Offline</span>`;
+    toast('Backend is not running. Please start: uvicorn app.main:app --reload', 'error');
+  }
+}
+
+/* ── Run Agent ────────────────────────────────────── */
+async function runAgent() {
+  const btn = $('#btnRunAgent');
+  const goal = $('#goalInput').value.trim();
+  if (!goal) { toast('Please enter a goal.', 'error'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Running...';
+
+  // Reset panels
+  $('#agentBody').innerHTML = '';
+  $('#reviewBody').innerHTML = '';
+  quizState = { current: 0, answers: [], scores: {} };
+
+  try {
+    const res = await fetch(`${API}/api/agent/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        goal: goal,
+        series_id: 'wugang_letters',
+        preferred_mode: 'llm',
+        max_steps: 12,
+        require_evidence: true,
+        require_human_review: true,
+      }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    agentResult = await res.json();
+
+    renderAgentSteps(agentResult);
+    renderReviewPanel(agentResult);
+    renderQuizPanel(agentResult);
+
+    if (agentResult.success) {
+      toast('Agent completed successfully!', 'success');
+    } else {
+      toast('Agent completed with issues. Check steps for details.', 'error');
+    }
+  } catch (e) {
+    toast(`Agent run failed: ${e.message}`, 'error');
+    $('#agentBody').innerHTML = `
+      <div class="empty-state">
+        <div class="icon" style="color:var(--red)">&#9888;</div>
+        <p>Agent run failed.<br>${e.message}</p>
+      </div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Run Agent';
+  }
+}
+
+/* ── Render Agent Steps ───────────────────────────── */
+function renderAgentSteps(result) {
+  const body = $('#agentBody');
+  body.innerHTML = '';
+
+  // Fallback banner
+  const rr = result.review_report || {};
+  if (rr.llm_attempted && rr.fallback_used) {
+    const banner = el('div', 'fallback-banner');
+    banner.innerHTML = `
+      <strong>LLM attempted, fallback to ${rr.final_generation_mode || 'RAG'}</strong>
+      Provider: ${rr.llm_provider_attempted || '?'} / Model: ${rr.llm_model_attempted || '?'}<br>
+      Reason: ${rr.fallback_reason || 'Unknown'}
+    `;
+    body.appendChild(banner);
+  }
+
+  // Steps
+  const steps = result.steps || [];
+  if (!steps.length) {
+    body.appendChild(el('div', 'empty-state', '<div class="icon">&#9881;</div><p>No steps recorded.</p>'));
+    return;
+  }
+
+  for (const step of steps) {
+    const tc = step.tool_call || {};
+    const obs = step.observation || {};
+    const statusCls = step.status === 'completed' ? 'completed' : (step.status === 'failed' ? 'failed' : '');
+
+    let extraCls = '';
+    if (tc.tool_name === 'repair_content_pack') extraCls = ' repair';
+    if (tc.tool_name === 'generate_content_pack_llm' && step.status === 'failed') extraCls = ' fallback';
+
+    const card = el('div', `step-card ${statusCls}${extraCls}`);
+
+    // Observation summary
+    let obsText = '';
+    if (obs.error) {
+      obsText = `<div class="step-obs" style="color:var(--red)">${escHtml(obs.error.substring(0, 200))}</div>`;
+    } else if (obs.data && typeof obs.data === 'object') {
+      const keys = Object.keys(obs.data).slice(0, 4);
+      obsText = `<div class="step-obs">${keys.map(k => `${k}: ${typeof obs.data[k] === 'object' ? '...' : escHtml(String(obs.data[k]).substring(0, 60))}`).join(' | ')}</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="step-top">
+        <div class="step-index">${step.step_index}</div>
+        <span class="step-tag ${tagClass(tc.tool_name || '')}">${tagLabel(tc.tool_name || 'unknown')}</span>
+        <span class="step-status ${step.status === 'completed' ? 'ok' : 'fail'}">${step.status}</span>
+      </div>
+      <div class="step-summary">${escHtml(step.decision_summary || '')}</div>
+      ${obsText}
+    `;
+    body.appendChild(card);
+  }
+}
+
+/* ── Render Review Panel ──────────────────────────── */
+function renderReviewPanel(result) {
+  const body = $('#reviewBody');
+  body.innerHTML = '';
+
+  const rr = result.review_report;
+  if (!rr) {
+    body.innerHTML = '<div class="empty-state"><p>No review report.</p></div>';
+    return;
+  }
+
+  // LLM tracking section
+  if (rr.llm_attempted) {
+    const sec = el('div', 'review-section');
+    sec.innerHTML = `<h4>LLM Tracking</h4>
+      <div class="metric-row"><span class="metric-label">LLM Attempted</span><span class="metric-value good">Yes</span></div>
+      <div class="metric-row"><span class="metric-label">Provider</span><span class="metric-value">${escHtml(rr.llm_provider_attempted || '-')}</span></div>
+      <div class="metric-row"><span class="metric-label">Model</span><span class="metric-value">${escHtml(rr.llm_model_attempted || '-')}</span></div>
+      <div class="metric-row"><span class="metric-label">Call Status</span><span class="metric-value ${rr.llm_call_status === 'completed' ? 'good' : 'bad'}">${escHtml(rr.llm_call_status || '-')}</span></div>
+      <div class="metric-row"><span class="metric-label">Fallback Used</span><span class="metric-value ${rr.fallback_used ? 'warn' : 'good'}">${rr.fallback_used ? 'Yes' : 'No'}</span></div>
+      ${rr.fallback_reason ? `<div class="metric-row"><span class="metric-label">Fallback Reason</span></div><div style="font-size:11px;color:var(--yellow);padding:4px 0;line-height:1.5">${escHtml(rr.fallback_reason)}</div>` : ''}
+      <div class="metric-row"><span class="metric-label">Final Mode</span><span class="metric-value ${rr.final_generation_mode === 'llm' ? 'good' : 'warn'}">${escHtml(rr.final_generation_mode || '-')}</span></div>
+    `;
+    body.appendChild(sec);
+  }
+
+  // Evidence section
+  const cov = rr.evidence_coverage || 0;
+  const sec2 = el('div', 'review-section');
+  sec2.innerHTML = `<h4>Evidence</h4>
+    <div class="metric-row"><span class="metric-label">Coverage</span><span class="metric-value ${cov >= 1.0 ? 'good' : 'bad'}">${(cov * 100).toFixed(0)}%</span></div>
+    <div class="metric-row"><span class="metric-label">Total Refs</span><span class="metric-value">${rr.total_evidence_refs || 0}</span></div>
+    <div class="metric-row"><span class="metric-label">Questions w/ Evidence</span><span class="metric-value">${rr.questions_with_evidence || 0}</span></div>
+    <div class="metric-row"><span class="metric-label">Nodes w/ Evidence</span><span class="metric-value">${rr.nodes_with_evidence || 0}</span></div>
+    ${cov >= 1.0 ? '<div style="margin-top:8px;padding:6px 10px;background:var(--green-bg);border-radius:var(--radius);font-size:12px;color:var(--green)">&#10003; Evidence coverage complete</div>' : ''}
+  `;
+  body.appendChild(sec2);
+
+  // Validation section
+  const sec3 = el('div', 'review-section');
+  sec3.innerHTML = `<h4>Validation & Safety</h4>
+    <div class="metric-row"><span class="metric-label">Schema Validated</span><span class="metric-value ${rr.schema_validation_passed ? 'good' : 'bad'}">${rr.schema_validation_passed ? 'Passed' : 'Failed'}</span></div>
+    <div class="metric-row"><span class="metric-label">Needs Human Review</span><span class="metric-value ${rr.needs_human_review ? 'good' : 'warn'}">${rr.needs_human_review ? 'Yes' : 'No'}</span></div>
+    <div class="metric-row"><span class="metric-label">Risk Flags</span><span class="metric-value ${(rr.safety_risk_flags || []).length ? 'bad' : 'good'}">${(rr.safety_risk_flags || []).length}</span></div>
+  `;
+  body.appendChild(sec3);
+
+  // Recommended action
+  if (rr.recommended_next_action) {
+    const sec4 = el('div', 'review-section');
+    sec4.innerHTML = `<h4>Recommended Action</h4>
+      <p style="font-size:12px;line-height:1.6;color:var(--text-dim)">${escHtml(rr.recommended_next_action)}</p>
+    `;
+    body.appendChild(sec4);
+  }
+
+  // Evidence refs placeholder
+  const evDiv = el('div', '');
+  evDiv.id = 'evidenceRefsContainer';
+  body.appendChild(evDiv);
+}
+
+/* ── Render Evidence for a Question ───────────────── */
+function renderEvidenceRefs(questionIndex) {
+  const container = $('#evidenceRefsContainer');
+  if (!container || !agentResult || !agentResult.final_content_pack) return;
+
+  const cp = agentResult.final_content_pack;
+  const questions = cp.questions || [];
+  const q = questions[questionIndex];
+  if (!q) { container.innerHTML = ''; return; }
+
+  const refs = q.evidence_refs || [];
+  let html = `<h4 style="margin-top:16px">Evidence for Q${questionIndex + 1}</h4>`;
+  if (!refs.length) {
+    html += '<p style="font-size:12px;color:var(--text-muted)">No evidence refs for this question.</p>';
+  } else {
+    for (const ref of refs) {
+      html += `
+        <div class="evidence-card">
+          <div class="ev-source">${escHtml(ref.source_file || '?')} <span style="color:var(--text-muted)">[${escHtml(ref.doc_type || '')}]</span></div>
+          <div class="ev-section">${escHtml(ref.section || '')}</div>
+          <div class="ev-quote">${escHtml((ref.quote || '').substring(0, 200))}</div>
+        </div>`;
+    }
+  }
+  container.innerHTML = html;
+}
+
+/* ── Render Quiz Panel ────────────────────────────── */
+function renderQuizPanel(result) {
+  const body = $('#quizBody');
+  body.innerHTML = '';
+
+  const cp = result.final_content_pack;
+  if (!cp) {
+    body.innerHTML = '<div class="empty-state"><p>No content pack generated.</p></div>';
+    return;
+  }
+
+  const drama = cp.drama || {};
+  const questions = cp.questions || [];
+  if (!questions.length) {
+    body.innerHTML = '<div class="empty-state"><p>No questions in content pack.</p></div>';
+    return;
+  }
+
+  // Init scores
+  const chars = cp.characters || [];
+  for (const c of chars) {
+    if (!quizState.scores[c.id]) quizState.scores[c.id] = 0;
+  }
+
+  // Header
+  const header = el('div', 'quiz-header');
+  header.innerHTML = `<h3>${escHtml(drama.title || 'Untitled')}</h3><p>${escHtml(drama.description || '').substring(0, 120)}...</p>`;
+  body.appendChild(header);
+
+  // Progress dots
+  const progress = el('div', 'quiz-progress');
+  for (let i = 0; i < questions.length; i++) {
+    const dot = el('div', `quiz-dot ${i < quizState.current ? 'done' : (i === quizState.current ? 'current' : '')}`);
+    progress.appendChild(dot);
+  }
+  body.appendChild(progress);
+
+  if (quizState.current >= questions.length) {
+    // Show result
+    renderQuizResult(cp, chars, body);
+    return;
+  }
+
+  // Current question
+  const q = questions[quizState.current];
+  const card = el('div', 'question-card');
+  card.innerHTML = `<div class="question-bg">${escHtml(q.background || '')}</div>
+    <div class="question-text">${escHtml(q.question || '')}</div>`;
+
+  const opts = q.options || [];
+  for (let i = 0; i < opts.length; i++) {
+    const opt = opts[i];
+    const selected = quizState.answers[quizState.current] === i;
+    const btn = el('button', `option-btn ${selected ? 'selected' : ''}`);
+    btn.innerHTML = `
+      <span class="label">${escHtml(opt.label)}.</span>
+      ${escHtml(opt.text)}
+      <div class="feedback">${escHtml(opt.feedback_character || '')}</div>
+    `;
+    btn.onclick = () => selectAnswer(q, i, opt);
+    card.appendChild(btn);
+  }
+  body.appendChild(card);
+
+  // Navigation
+  const nav = el('div', 'quiz-nav');
+  if (quizState.current > 0) {
+    const prev = el('button', 'btn btn-secondary btn-sm', '← Previous');
+    prev.onclick = () => { quizState.current--; renderQuizPanel(agentResult); };
+    nav.appendChild(prev);
+  }
+  if (quizState.answers[quizState.current] !== undefined) {
+    const nextLabel = quizState.current < questions.length - 1 ? 'Next →' : 'See Result →';
+    const next = el('button', 'btn btn-primary btn-sm', nextLabel);
+    next.onclick = () => {
+      quizState.current++;
+      renderQuizPanel(agentResult);
+      renderEvidenceRefs(Math.min(quizState.current, questions.length - 1));
+    };
+    nav.appendChild(next);
+  }
+  body.appendChild(nav);
+
+  // Show evidence for current question
+  renderEvidenceRefs(quizState.current);
+}
+
+function selectAnswer(question, optIndex, opt) {
+  quizState.answers[quizState.current] = optIndex;
+
+  // Score character mappings
+  for (const cm of (opt.character_mapping || [])) {
+    quizState.scores[cm.character_id] = (quizState.scores[cm.character_id] || 0) + (cm.score || 1);
+  }
+
+  renderQuizPanel(agentResult);
+}
+
+function renderQuizResult(cp, chars, body) {
+  // Find top character
+  let topChar = null;
+  let topScore = -1;
+  for (const [cid, score] of Object.entries(quizState.scores)) {
+    if (score > topScore) { topScore = score; topChar = cid; }
+  }
+
+  // Find matching result
+  const results = cp.results || [];
+  const result = results.find(r => r.character_id === topChar) || results[0] || {};
+
+  // Find character info
+  const charInfo = chars.find(c => c.id === topChar) || {};
+
+  const card = el('div', 'result-card');
+  card.innerHTML = `
+    <h3>${escHtml(result.title || charInfo.name || 'Your Result')}</h3>
+    <div class="quote">${escHtml(result.main_quote || '')}</div>
+    <div class="section">
+      <div class="section-title">Analysis</div>
+      <div class="section-text">${escHtml(result.explanation || '')}</div>
+    </div>
+    <div class="section">
+      <div class="section-title">Fate Hint</div>
+      <div class="section-text">${escHtml(result.fate_hint || '')}</div>
+    </div>
+    ${result.recommended_scenes && result.recommended_scenes.length ? `
+      <div class="section">
+        <div class="section-title">Recommended Scenes</div>
+        <div class="scenes">
+          ${result.recommended_scenes.map(s => `<span class="scene-tag">${escHtml(s)}</span>`).join('')}
+        </div>
+      </div>` : ''}
+    <div style="margin-top:16px">
+      <button class="btn btn-secondary btn-sm" onclick="quizState={current:0,answers:[],scores:{}};renderQuizPanel(agentResult)">Replay</button>
+    </div>
+  `;
+  body.appendChild(card);
+}
+
+/* ── Escape HTML ──────────────────────────────────── */
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ── Init ─────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  checkLLM();
+});
+</script>
+</body>
+</html>

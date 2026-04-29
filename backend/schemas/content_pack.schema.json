@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DramaType Content Pack",
+  "type": "object",
+  "required": ["drama", "characters", "nodes", "questions", "results", "review", "agent_meta"],
+  "properties": {
+    "drama": {
+      "type": "object",
+      "required": ["title", "type", "description"],
+      "properties": {
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "characters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "archetype", "keywords", "description", "action_logic"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "archetype": { "type": "string" },
+          "keywords": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "description": { "type": "string" },
+          "action_logic": { "type": "string" }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "episode", "time_range", "scene_summary", "conflict_type", "spoiler_level", "why_interactive"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "episode": { "type": "string" },
+          "time_range": { "type": "string" },
+          "scene_summary": { "type": "string" },
+          "conflict_type": { "type": "string" },
+          "spoiler_level": {
+            "type": "string",
+            "enum": ["看前无剧透", "轻微剧透", "看后深度复盘"]
+          },
+          "why_interactive": { "type": "string" }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "node_id", "background", "question", "options"],
+        "properties": {
+          "id": { "type": "string" },
+          "node_id": { "type": "string" },
+          "background": { "type": "string" },
+          "question": { "type": "string" },
+          "options": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["label", "text", "character_mapping", "action_logic", "feedback_character", "slice_candidate", "ai_analysis"],
+              "properties": {
+                "label": { "type": "string" },
+                "text": { "type": "string" },
+                "character_mapping": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": ["character_id", "score"],
+                    "properties": {
+                      "character_id": { "type": "string" },
+                      "score": { "type": "number" }
+                    }
+                  }
+                },
+                "action_logic": { "type": "string" },
+                "feedback_character": { "type": "string" },
+                "slice_candidate": {
+                  "type": "object",
+                  "required": ["episode", "time", "title", "scene", "subtitle"],
+                  "properties": {
+                    "episode": { "type": "string" },
+                    "time": { "type": "string" },
+                    "title": { "type": "string" },
+                    "scene": { "type": "string" },
+                    "subtitle": { "type": "string" }
+                  }
+                },
+                "ai_analysis": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["character_id", "title", "main_quote", "explanation", "fate_hint", "recommended_scenes"],
+        "properties": {
+          "character_id": { "type": "string" },
+          "title": { "type": "string" },
+          "main_quote": { "type": "string" },
+          "explanation": { "type": "string" },
+          "fate_hint": { "type": "string" },
+          "recommended_scenes": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": ["risk_flags", "spoiler_flags", "needs_human_review"],
+      "properties": {
+        "risk_flags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "spoiler_flags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["node_id", "level", "reason"],
+            "properties": {
+              "node_id": { "type": "string" },
+              "level": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "needs_human_review": {
+          "type": "boolean"
+        }
+      }
+    },
+    "agent_meta": {
+      "type": "object",
+      "required": ["input_material_length", "pipeline_version", "generation_mode", "schema_validated", "human_review_required"],
+      "properties": {
+        "input_material_length": { "type": "number" },
+        "pipeline_version": { "type": "string" },
+        "generation_mode": { "type": "string" },
+        "llm_provider": { "type": ["string", "null"] },
+        "schema_validated": { "type": "boolean" },
+        "human_review_required": { "type": "boolean" },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

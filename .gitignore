@@ -1,0 +1,56 @@
+# ── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# ── Virtual Environment ────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Environment Variables ──────────────────────────────
+.env
+*.env
+.env.local
+.env.production
+backend/.env
+
+# ── IDE ────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Pytest ─────────────────────────────────────────────
+.pytest_cache/
+
+# ── Chroma / Vector Store ──────────────────────────────
+backend/data/vector_store/
+backend/chroma/
+backend/.chromadb/
+*.sqlite3
+
+# ── Generated Output ───────────────────────────────────
+backend/data/output/
+
+# ── Node / Frontend ────────────────────────────────────
+node_modules/
+dist/
+
+# ── OS ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+
+# ── Misc ───────────────────────────────────────────────
+*.bak
+*.tmp
+*.swp

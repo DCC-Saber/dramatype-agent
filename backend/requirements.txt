@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+jsonschema
+pytest
+langchain
+langchain-anthropic
+langchain-openai
+langchain-community
+langchain-chroma
+chromadb
+langgraph

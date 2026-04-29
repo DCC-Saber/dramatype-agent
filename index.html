@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>剧格 AI DramaType — 腾讯视频剧情人格互动测试</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: { primary:'#0a0a0f', secondary:'#111118', card:'#1a1a24', elevated:'#22222e' },
+            accent: { green:'#2bcb79', 'green-hover':'#34d984' },
+            character: { linche:'#60a5fa', xuzhixia:'#fbbf24', zhouye:'#f87171', guchen:'#a78bfa' },
+            text: { primary:'#f0f0f5', secondary:'#9ca3af', muted:'#6b7280' },
+          },
+          fontFamily: {
+            display: ['"Noto Serif SC"','STSong','SimSun','serif'],
+            body: ['"Noto Sans SC"','"Microsoft YaHei"','system-ui','sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh;background:#0a0a0f;color:#f0f0f5}
+    #root{min-height:100vh}
+    ::selection{background:rgba(43,203,121,.3);color:#fff}
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-track{background:#0a0a0f}
+    ::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+    .film-grain::before{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");background-repeat:repeat;pointer-events:none;z-index:1;opacity:.5}
+    .scanlines::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);pointer-events:none;z-index:2}
+    .text-shadow-glow{text-shadow:0 0 20px rgba(43,203,121,.5),0 0 40px rgba(43,203,121,.2)}
+    .text-shadow-title{text-shadow:0 2px 20px rgba(0,0,0,.8),0 0 60px rgba(43,203,121,.15)}
+    @keyframes spectrumFill{from{width:0%}}
+    .spectrum-bar{animation:spectrumFill 1.2s ease-out forwards}
+    @keyframes progressPulse{0%,100%{opacity:1}50%{opacity:.6}}
+    .progress-pulse{animation:progressPulse 2s ease-in-out infinite}
+    @keyframes pulseGlow{0%,100%{box-shadow:0 0 20px rgba(43,203,121,.2)}50%{box-shadow:0 0 40px rgba(43,203,121,.4)}}
+    .pulse-glow{animation:pulseGlow 2s ease-in-out infinite}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideInLeft{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes slideInRight{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+    .anim-fade-in{animation:fadeIn .6s ease-out both}
+    .anim-slide-up{animation:slideUp .6s ease-out both}
+    .anim-slide-left{animation:slideInLeft .5s ease-out both}
+    .anim-slide-right{animation:slideInRight .5s ease-out both}
+    .d100{animation-delay:.1s}.d200{animation-delay:.2s}.d300{animation-delay:.3s}.d400{animation-delay:.4s}
+    .d500{animation-delay:.5s}.d600{animation-delay:.6s}.d700{animation-delay:.7s}.d800{animation-delay:.8s}
+    .d1000{animation-delay:1s}.d1200{animation-delay:1.2s}.d1400{animation-delay:1.4s}.d1600{animation-delay:1.6s}
+    .option-card{transition:all .3s ease}
+    .option-card:hover{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.06);transform:translateX(4px)}
+    .option-card.selected{border-color:rgba(43,203,121,.6);background:rgba(43,203,121,.1);transform:scale(1.02)}
+    .option-card:active{transform:scale(.98)}
+    .modal-backdrop{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  </style>
+</head>
+<body class="bg-bg-primary text-text-primary font-body">
+<div id="root"></div>
+
+<!-- ==================== DATA ==================== -->
+<script type="text/babel">
+const dramaInfo={title:'雾港来信',type:'悬疑 / 群像 / 情感抉择 / 6 集短剧',description:'十年前，雾港发生一起未解旧案。十年后，一封没有署名的来信寄到四位故人手中。每个人都知道一部分真相，也都在隐瞒一部分过去。随着调查深入，他们必须在保护关系、追求真相、遵守规则和打破僵局之间做出选择。'};
+const characters={
+  linche:{key:'linche',name:'林澈',title:'冷静观察者',color:'#60a5fa',keywords:['克制','观察','延迟判断','证据优先'],desc:'他不急于摊牌，总是在别人忽略的细节里寻找真相。'},
+  xuzhixia:{key:'xuzhixia',name:'许知夏',title:'共情守护者',color:'#fbbf24',keywords:['关系','保护','共情','承担'],desc:'她总是先看见人的伤口，再判断事情的对错。'},
+  zhouye:{key:'zhouye',name:'周野',title:'冒险破局者',color:'#f87171',keywords:['行动','冲动','突破','直觉'],desc:'他不喜欢等待答案，会直接把门撞开。'},
+  guchen:{key:'guchen',name:'顾沉',title:'秩序裁决者',color:'#a78bfa',keywords:['规则','边界','公正','理性'],desc:'他相信边界，因为没有边界的善意也会伤人。'},
+};
+const questions=[
+  {id:1,title:'被藏起的来信',episode:'第 2 集',background:'你发现朋友偷偷藏起了一封关键来信，而这封信可能和十年前的旧案有关。他没有发现你看见了这一幕。',question:'你会怎么做？',sceneGradient:'from-slate-900 via-blue-950 to-slate-800',sceneEmoji:'✉️',sceneDesc:'深夜书房，抽屉半开，信封压在旧报纸下',options:[
+    {text:'当场质问他，逼他说出真相',mapping:[{character:'zhouye',value:2},{character:'guchen',value:1}],feedbackCharacter:'zhouye',slice:{title:'第 2 集 08:15｜撞开门的人',time:'08:15',scene:'走廊尽头，门被猛地推开。周野站在门口，直视着屋里的人。',subtitle:'你不用解释了。把信交出来，现在。',analysis:'你选择了直接面对。你的行动模式更接近"冒险破局者"：不等线索拼完，先打破僵局再说。这种果断在关键时刻能撕开真相，但也可能伤害还没准备好的人。'}},
+    {text:'假装没看见，之后暗中调查',mapping:[{character:'linche',value:3}],feedbackCharacter:'linche',slice:{title:'第 2 集 13:42｜没有拆穿的来信',time:'13:42',scene:'深夜书房，抽屉半开，信封压在旧报纸下。林澈把信放回原处，关灯离开。',subtitle:'现在问出来，只会让他换一种谎话。',analysis:'你没有立刻摊牌，而是选择延迟判断。你的选择更接近"冷静观察者"：在关系破裂前，先收集更多证据。你相信真相会自己浮出水面。'}},
+    {text:'先替他隐瞒，等他主动解释',mapping:[{character:'xuzhixia',value:3}],feedbackCharacter:'xuzhixia',slice:{title:'第 2 集 16:08｜替他关上的门',time:'16:08',scene:'客厅，许知夏不动声色地把话题引开，替朋友挡住了其他人的追问。',subtitle:'他一定有不想说的理由。我等他。',analysis:'你优先保护了关系。你的选择更接近"共情守护者"：你相信每个人都有难以开口的理由，愿意给对方时间和空间。但这份善意有时也会变成纵容。'}},
+    {text:'把信交给更可靠的人处理',mapping:[{character:'guchen',value:3}],feedbackCharacter:'guchen',slice:{title:'第 2 集 19:30｜不在手上的信',time:'19:30',scene:'邮局柜台前，顾沉把信封递给了一个穿制服的人。他的表情没有任何犹豫。',subtitle:'这件事不该由我们来判断。有更合适的人处理。',analysis:'你选择了让渡判断权。你的选择更接近"秩序裁决者"：你相信规则和程序比个人判断更可靠。你宁可被说"没有人情味"，也不愿让混乱主导局面。'}},
+  ]},
+  {id:2,title:'信任的人背叛你',episode:'第 3 集',background:'你发现最信任的人对你撒了谎，但他曾经在你最危险的时候救过你。',question:'你会如何处理这段关系？',sceneGradient:'from-zinc-900 via-red-950 to-zinc-900',sceneEmoji:'🔪',sceneDesc:'雨夜天台，两个人对峙，远处港口灯火模糊',options:[
+    {text:'立刻断开关系，不再给第二次机会',mapping:[{character:'guchen',value:2},{character:'zhouye',value:1}],feedbackCharacter:'guchen',slice:{title:'第 3 集 05:22｜划清的线',time:'05:22',scene:'天台边缘，顾沉转身离开，背影决绝。身后的人喊了一声，他没有回头。',subtitle:'信任碎了就是碎了。以前的事不能抵消现在的谎言。',analysis:'你选择了清晰的边界。你的处理方式更接近"秩序裁决者"：你相信关系需要建立在诚实之上，过去的恩情不能成为欺骗的通行证。'}},
+    {text:'给他一次解释机会，但不完全相信',mapping:[{character:'linche',value:2},{character:'xuzhixia',value:1}],feedbackCharacter:'linche',slice:{title:'第 3 集 09:47｜半开的门',time:'09:47',scene:'茶餐厅角落，林澈把茶杯放下，看着对面的人。他的眼神不带情绪，只是在观察。',subtitle:'你可以解释。但我不会只听你说什么，我会看你做什么。',analysis:'你选择了有条件的信任。你的处理方式更接近"冷静观察者"：你给对方空间，但同时保持警惕。你不急于下结论，也不会轻易翻篇。'}},
+    {text:'先保护他，再查清楚他为什么撒谎',mapping:[{character:'xuzhixia',value:3}],feedbackCharacter:'xuzhixia',slice:{title:'第 3 集 14:03｜先挡住的伞',time:'14:03',scene:'雨中码头，许知夏把外套递给淋湿的人，自己也被雨打透。',subtitle:'不管发生了什么，你现在需要的不是指责，是有人站在你这边。',analysis:'你选择了先保护再理解。你的处理方式更接近"共情守护者"：你本能地先看到对方的处境，再决定自己的立场。这种能力让你成为别人最想依靠的人。'}},
+    {text:'利用他的隐瞒反向试探幕后的人',mapping:[{character:'linche',value:3}],feedbackCharacter:'linche',slice:{title:'第 3 集 21:18｜反向的棋',time:'21:18',scene:'旧档案室，林澈在纸上画着关系图，用红笔在某个人名上画了一个圈。',subtitle:'他的谎言不是终点，是线索。我要看的是谁让他撒这个谎。',analysis:'你把危机转化为了信息。你的处理方式更接近"冷静观察者"：你不会被情绪带偏，而是把每件事都当作拼图的一部分。你最擅长的是在混乱中看到结构。'}},
+  ]},
+  {id:3,title:'救人还是保住证据',episode:'第 4 集',background:'你只有 10 分钟。一个人被困在码头仓库里，而能证明真相的录音也可能被销毁。',question:'你会怎么选？',sceneGradient:'from-slate-900 via-amber-950 to-slate-800',sceneEmoji:'⏰',sceneDesc:'码头仓库，火光映照水面，倒计时开始',options:[
+    {text:'先救人，证据以后再想办法',mapping:[{character:'xuzhixia',value:3}],feedbackCharacter:'xuzhixia',slice:{title:'第 4 集 11:35｜跑向仓库的人',time:'11:35',scene:'许知夏不顾一切冲向仓库，身后有人在喊危险。她没有停下。',subtitle:'真相可以以后再找。但人没了就真的没了。',analysis:'你选择了人。你的决策方式更接近"共情守护者"：在证据和生命之间，你毫不犹豫地选择了后者。你相信任何真相都不值得用人命去换。'}},
+    {text:'先保住证据，否则更多人会受害',mapping:[{character:'guchen',value:3}],feedbackCharacter:'guchen',slice:{title:'第 4 集 14:02｜选择保存的录音笔',time:'14:02',scene:'顾沉按下录音笔的保存键，把它放进防水袋。仓库方向传来撞击声，他闭了一下眼睛。',subtitle:'如果证据没了，十年的努力和所有受害者的等待都会白费。',analysis:'你选择了大局。你的决策方式更接近"秩序裁决者"：你不是不心疼，但你知道一个人的安危和整个案件的真相之间，必须有人做出冷酷的计算。'}},
+    {text:'自己去救人，同时让别人转移证据',mapping:[{character:'zhouye',value:2},{character:'linche',value:1}],feedbackCharacter:'zhouye',slice:{title:'第 4 集 16:48｜两头跑的人',time:'16:48',scene:'周野把录音笔塞给旁边的人，自己已经朝仓库跑去。',subtitle:'为什么非要选一个？两个我都要！',analysis:'你拒绝二选一。你的决策方式更接近"冒险破局者"：你相信只要行动够快，就有机会两全。风险很大，但你宁愿冲在前面赌一把。'}},
+    {text:'判断现场风险后，选择成功率更高的一边',mapping:[{character:'linche',value:3}],feedbackCharacter:'linche',slice:{title:'第 4 集 19:15｜停下来的三秒',time:'19:15',scene:'林澈没有立刻行动。他站在原地观察了三秒：仓库结构、火势方向、逃生路线。',subtitle:'冲动选不了正确的答案。我需要先看清楚局势。',analysis:'你选择了先评估。你的决策方式更接近"冷静观察者"：你不是不在乎，而是在最短时间里做出最理性的判断。你相信速度来自于准确，而不是来自冲动。'}},
+  ]},
+  {id:4,title:'是否公开真相',episode:'第 5 集',background:'你掌握了足以推翻所有人关系的真相。但一旦公开，一个无辜的人也会被舆论伤害。',question:'你会怎么做？',sceneGradient:'from-zinc-900 via-purple-950 to-zinc-900',sceneEmoji:'⚖️',sceneDesc:'会议室，四个人围坐，桌上摊开一份文件',options:[
+    {text:'公开真相，所有后果都必须面对',mapping:[{character:'guchen',value:3}],feedbackCharacter:'guchen',slice:{title:'第 5 集 07:40｜摊开的文件',time:'07:40',scene:'顾沉把文件推到桌子中央，所有人都能看到上面的内容。他的手很稳。',subtitle:'隐瞒真相的代价，永远比面对真相更大。',analysis:'你选择了透明。你的立场更接近"秩序裁决者"：你相信真相本身没有对错，但隐瞒真相一定有代价。你愿意承担公开的后果，也不愿让谎言继续运转。'}},
+    {text:'暂缓公开，先保护无辜者',mapping:[{character:'xuzhixia',value:3}],feedbackCharacter:'xuzhixia',slice:{title:'第 5 集 12:26｜合上的文件夹',time:'12:26',scene:'许知夏把文件收进抽屉，抬头看向其他人。她的眼神里有请求，也有坚定。',subtitle:'真相重要，但不能让无辜的人先替真相买单。',analysis:'你选择了缓冲。你的立场更接近"共情守护者"：你不是反对公开，而是反对在没有保护措施的情况下公开。你相信正义不只是揭露，还要保护那些会被误伤的人。'}},
+    {text:'只公开一部分，引出真正的幕后者',mapping:[{character:'linche',value:3}],feedbackCharacter:'linche',slice:{title:'第 5 集 17:09｜半透明的真相',time:'17:09',scene:'林澈在纸上划掉了几行字，只留下他认为该让人看到的部分。',subtitle:'全部公开太便宜了。我要让幕后的人自己走出来。',analysis:'你选择了策略。你的立场更接近"冷静观察者"：你把真相当作棋子，用来操控局势走向。你不是在隐瞒，而是在计算最佳的揭露时机。'}},
+    {text:'直接找幕后者摊牌，逼他自己露出破绽',mapping:[{character:'zhouye',value:3}],feedbackCharacter:'zhouye',slice:{title:'第 5 集 22:55｜没有预约的对峙',time:'22:55',scene:'周野推开门，直直走向那个人。所有人都愣住了。',subtitle:'我不玩阴的。有什么话，当面说清楚。',analysis:'你选择了正面突破。你的立场更接近"冒险破局者"：你相信把事情摊到桌面上比暗中操作更有效。你不怕冲突，因为你知道拖延只会制造更多问题。'}},
+  ]},
+  {id:5,title:'最后的选择',episode:'第 6 集（终章）',background:'真相即将揭开，但你发现自己也曾间接造成了这场悲剧。所有人都在等你开口。',question:'你会怎么面对？',sceneGradient:'from-slate-900 via-slate-800 to-zinc-900',sceneEmoji:'🌊',sceneDesc:'雾港码头，黎明将至，雾气开始散去',options:[
+    {text:'承认自己的责任，即使会失去一切',mapping:[{character:'guchen',value:2},{character:'xuzhixia',value:1}],feedbackCharacter:'guchen',slice:{title:'第 6 集 28:10｜最后的陈述',time:'28:10',scene:'所有人安静下来。顾沉站起身，一字一句地说出自己的责任。没有人打断他。',subtitle:'如果连自己都不敢面对，凭什么要求别人诚实？',analysis:'你选择了担当。你的最终态度更接近"秩序裁决者"：你相信规则面前没有人可以例外，包括你自己。你宁可失去一切，也要守住最后的公正。'}},
+    {text:'先完成最后一步，再回来承担后果',mapping:[{character:'linche',value:3}],feedbackCharacter:'linche',slice:{title:'第 6 集 32:45｜还没说完的话',time:'32:45',scene:'林澈看了一眼手表，站起身来。所有人都以为他要离开，但他走向了白板。',subtitle:'我的责任我不会逃。但在这之前，还有一件事必须做完。',analysis:'你选择了先完成再面对。你的最终态度更接近"冷静观察者"：你不是在逃避，而是在用理性排列优先级。你相信承担的前提是先把能做的事做到。'}},
+    {text:'找到还能补救的人，不让悲剧继续扩大',mapping:[{character:'xuzhixia',value:2},{character:'zhouye',value:1}],feedbackCharacter:'xuzhixia',slice:{title:'第 6 集 36:20｜还能补救的人',time:'36:20',scene:'许知夏走出房间，找到了一直躲在角落里的那个人。她蹲下来，看着他的眼睛。',subtitle:'已经发生的事我改变不了。但我能做的是不让伤害继续传下去。',analysis:'你选择了止损。你的最终态度更接近"共情守护者"：你相信承认错误只是开始，更重要的是找到还能被拯救的人和关系。你的力量不在于审判，而在于修复。'}},
+    {text:'不解释，直接行动，用结果证明自己',mapping:[{character:'zhouye',value:3}],feedbackCharacter:'zhouye',slice:{title:'第 6 集 41:05｜没有告别的话',time:'41:05',scene:'周野没有解释。他转身走进雾里，身后有人喊他的名字。他只是挥了挥手。',subtitle:'说一万句对不起不如做一件对的事。等我回来。',analysis:'你选择了行动。你的最终态度更接近"冒险破局者"：你相信语言是最无力的道歉，只有结果才能证明你的改变。你不是不在乎别人的感受，而是你知道此刻行动比言语更有意义。'}},
+  ]},
+];
+const results={
+  linche:{name:'林澈',title:'冷静观察者',mainQuote:'你不会第一个冲出去，但你会记住所有人说过的话。',explanation:'你习惯先观察，再判断。面对复杂关系，你不急于站队，也不轻易摊牌。你相信真相会留下痕迹，而情绪不能替代证据。',fateHint:'在故事里，你往往前期被误解，中期掌握关键线索，后期成为改变局势的人。',recommendedScenes:['第 2 集 13:42 没有拆穿的来信','第 3 集 21:18 反向的棋','第 5 集 17:09 半透明的真相']},
+  xuzhixia:{name:'许知夏',title:'共情守护者',mainQuote:'你总是先看见人的伤口，再判断事情的对错。',explanation:'你更在意关系中的痛苦和隐情。面对背叛，你不会立刻放弃一个人，而是想知道他为什么走到这一步。',fateHint:'在故事里，你可能是最容易受伤的人，也是最能让别人回头的人。',recommendedScenes:['第 2 集 16:08 替他关上的门','第 3 集 14:03 先挡住的伞','第 4 集 11:35 跑向仓库的人']},
+  zhouye:{name:'周野',title:'冒险破局者',mainQuote:'你不喜欢等答案，你会把门撞开。',explanation:'你相信行动比猜测更有用。面对僵局，你宁愿冒险推进，也不愿坐在原地消耗。',fateHint:'在故事里，你可能制造最多麻烦，也可能第一个撕开真相。',recommendedScenes:['第 2 集 08:15 撞开门的人','第 4 集 16:48 两头跑的人','第 6 集 41:05 没有告别的话']},
+  guchen:{name:'顾沉',title:'秩序裁决者',mainQuote:'你相信边界，因为没有边界的善意也会伤人。',explanation:'你重视规则、责任和清晰的判断。你不轻易被情绪裹挟，也不愿让关系凌驾于事实之上。',fateHint:'在故事里，你可能显得冷硬，但你守住的是所有人最后还能相信的秩序。',recommendedScenes:['第 2 集 19:30 不在手上的信','第 4 集 14:02 选择保存的录音笔','第 5 集 07:40 摊开的文件']},
+};
+const pairDescriptions={
+  'linche-xuzhixia':{label:'冷静观察 × 共情守护',relation:'互相信任但决策方式完全不同的搭档',conflict:'你更相信证据，TA 更相信人',story:'你们前期容易互相误解，但在关键节点能互补。你的理性是TA的安全网，TA的共情是你的温度计。'},
+  'linche-zhouye':{label:'冷静观察 × 冒险破局',relation:'最安静和最吵闹的组合，却最能互相补位',conflict:'你想看清再动，TA 想先动再看',story:'你们经常节奏不合拍，但正因为如此，你们能覆盖彼此的盲区。TA推你一把，你拉TA一下。'},
+  'linche-guchen':{label:'冷静观察 × 秩序裁决',relation:'最理性的搭档组合，但可能缺少温度',conflict:'你重证据，TA 重规则',story:'你们在逻辑上高度一致，但可能在「特殊情况是否需要例外」上产生分歧。你们都需要一个共情者来平衡。'},
+  'xuzhixia-zhouye':{label:'共情守护 × 冒险破局',relation:'最有人情味也最有行动力的组合',conflict:'你想先保护人，TA 想先解决问题',story:'你们在一起时能量很高，但也容易失控。你的善良能让TA慢下来，TA的勇气能帮你走出犹豫。'},
+  'xuzhixia-guchen':{label:'共情守护 × 秩序裁决',relation:'感性与理性的经典冲突组合',conflict:'你在意人，TA 在意规则',story:'你们经常在「该不该破例」这个问题上辩论。但正是这种辩论，让你们找到既有人情味又有底线的答案。'},
+  'zhouye-guchen':{label:'冒险破局 × 秩序裁决',relation:'最对立也最有张力的搭档',conflict:'你想打破规则，TA 想维护规则',story:'你们几乎在每个决策点都会产生摩擦。但没有TA你可能闯祸，没有你TA可能错过时机。你们需要学会信任对方的判断。'},
+};
+</script>
+
+<!-- ==================== CONTEXT ==================== -->
+<script type="text/babel">
+const {createContext,useContext,useState,useCallback,useEffect,useMemo}=React;
+const QuizContext=createContext(null);
+const INITIAL_SCORES={linche:0,xuzhixia:0,zhouye:0,guchen:0};
+function QuizProvider({children}){
+  const[scores,setScores]=useState({...INITIAL_SCORES});
+  const[currentQuestion,setCurrentQuestion]=useState(0);
+  const[showingFeedback,setShowingFeedback]=useState(false);
+  const[selectedAnswer,setSelectedAnswer]=useState(null);
+  const[quizCompleted,setQuizCompleted]=useState(false);
+  const selectAnswer=useCallback((idx,mapping)=>{setSelectedAnswer(idx);setScores(p=>{const n={...p};mapping.forEach(m=>{n[m.character]=(n[m.character]||0)+m.value});return n});setShowingFeedback(true)},[]);
+  const goToNext=useCallback(()=>{if(currentQuestion>=4)setQuizCompleted(true);else setCurrentQuestion(p=>p+1);setShowingFeedback(false);setSelectedAnswer(null)},[currentQuestion]);
+  const resetQuiz=useCallback(()=>{setScores({...INITIAL_SCORES});setCurrentQuestion(0);setShowingFeedback(false);setSelectedAnswer(null);setQuizCompleted(false)},[]);
+  return <QuizContext.Provider value={{scores,currentQuestion,showingFeedback,selectedAnswer,quizCompleted,selectAnswer,goToNext,resetQuiz}}>{children}</QuizContext.Provider>;
+}
+function useQuiz(){const c=useContext(QuizContext);if(!c)throw new Error('no context');return c}
+</script>
+
+<!-- ==================== MOCK VIDEO PLAYER ==================== -->
+<script type="text/babel">
+function MockVideoPlayer({title,episode,time='00:00',sceneDesc,subtitle,character,sceneGradient='from-slate-900 via-slate-800 to-zinc-900',sceneEmoji='🎬',progress=0,showLabel=false}){
+  const char=character?characters[character]:null;
+  return(<div className="relative w-full rounded-xl overflow-hidden bg-bg-card border border-white/5 shadow-2xl">
+    <div className={`relative aspect-video bg-gradient-to-br ${sceneGradient} overflow-hidden`}>
+      <div className="film-grain absolute inset-0"/><div className="scanlines absolute inset-0"/>
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+        <div className="text-6xl mb-4 opacity-30 select-none">{sceneEmoji}</div>
+        <p className="text-text-secondary text-sm text-center px-8 opacity-60 italic">{sceneDesc}</p>
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center z-10">
+        <div className="w-16 h-16 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+          <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+      <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-20">
+        <div className="flex items-center gap-2">
+          <span className="bg-black/60 backdrop-blur-sm text-text-secondary text-xs px-2 py-1 rounded">{episode}</span>
+          {char&&<span className="text-xs px-2 py-1 rounded font-medium backdrop-blur-sm" style={{color:char.color,backgroundColor:`${char.color}20`,border:`1px solid ${char.color}40`}}>{char.name}视角</span>}
+        </div>
+        {showLabel&&<span className="bg-accent-green/20 text-accent-green text-xs px-2.5 py-1 rounded-full font-medium border border-accent-green/30 backdrop-blur-sm">原剧切片</span>}
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent z-10"/>
+      <div className="absolute bottom-3 left-3 right-3 z-20"><p className="text-white text-sm font-medium truncate">{title}</p></div>
+      <div className="absolute bottom-3 right-3 z-20"><span className="text-text-muted text-xs font-mono">{time}</span></div>
+    </div>
+    <div className="h-1 bg-bg-primary"><div className={`h-full bg-accent-green/70 rounded-r transition-all duration-1000 ${progress>0?'progress-pulse':''}`} style={{width:`${progress}%`}}/></div>
+    {subtitle&&<div className="bg-bg-card px-4 py-3 border-t border-white/5"><p className="text-text-primary text-sm text-center leading-relaxed">「{subtitle}」</p></div>}
+  </div>);
+}
+</script>
+
+<!-- ==================== HOME PAGE ==================== -->
+<script type="text/babel">
+function Home({onNavigate}){
+  const cl=Object.values(characters);
+  return(<div className="min-h-screen bg-bg-primary relative overflow-hidden">
+    <div className="absolute inset-0"><div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent-green/5 rounded-full blur-3xl"/><div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"/><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/3 rounded-full blur-3xl"/></div>
+    <div className="film-grain absolute inset-0"/>
+    <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
+      <div className="text-center max-w-3xl anim-slide-up">
+        <div className="anim-fade-in d200 inline-flex items-center gap-2 bg-accent-green/10 border border-accent-green/20 rounded-full px-4 py-1.5 mb-8">
+          <div className="w-2 h-2 rounded-full bg-accent-green animate-pulse"/><span className="text-accent-green text-sm font-medium">腾讯视频 AI 互动叙事</span>
+        </div>
+        <h1 className="anim-slide-up d300 font-display text-6xl md:text-7xl font-black tracking-tight mb-3 text-shadow-title"><span className="text-text-primary">剧格</span><span className="text-accent-green ml-3">AI DramaType</span></h1>
+        <p className="anim-fade-in d500 text-xl md:text-2xl text-text-primary font-display mt-6 mb-3 leading-relaxed">每一次选择，都暴露你站在哪个角色的命运里。</p>
+        <p className="anim-fade-in d600 text-base text-text-secondary mb-10">用剧情选择，测出你的角色人格光谱。</p>
+        <div className="anim-slide-up d700 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <button onClick={()=>onNavigate('select')} className="group relative px-10 py-4 bg-accent-green text-bg-primary font-bold text-lg rounded-xl hover:bg-accent-green-hover transition-all duration-300 pulse-glow"><span className="relative z-10">开始测试</span><div className="absolute inset-0 rounded-xl bg-accent-green/20 blur-xl group-hover:bg-accent-green/30 transition-all"/></button>
+          <button onClick={()=>onNavigate('agent')} className="px-8 py-4 bg-white/5 border border-white/10 text-text-secondary font-medium text-lg rounded-xl hover:bg-white/10 hover:text-text-primary transition-all duration-300">AI 生成台</button>
+        </div>
+      </div>
+      <div className="anim-slide-up d1000 mt-16 flex items-end justify-center gap-6 md:gap-10">
+        {cl.map((ch,i)=>(<div key={ch.key} className={`anim-fade-in d${1200+i*200} flex flex-col items-center gap-2 group cursor-default`}>
+          <div className="w-16 h-20 md:w-20 md:h-24 rounded-lg overflow-hidden border transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg" style={{borderColor:`${ch.color}40`,background:`linear-gradient(135deg,${ch.color}15,${ch.color}05)`}}>
+            <div className="w-full h-full flex items-center justify-center"><span className="text-2xl md:text-3xl opacity-60 group-hover:opacity-100 transition-opacity" style={{color:ch.color}}>{ch.key==='linche'?'🔍':ch.key==='xuzhixia'?'💛':ch.key==='zhouye'?'🔥':'⚖️'}</span></div>
+          </div>
+          <div className="text-center"><p className="text-xs font-medium" style={{color:ch.color}}>{ch.name}</p><p className="text-[10px] text-text-muted">{ch.title}</p></div>
+        </div>))}
+      </div>
+      <div className="anim-fade-in d1600 mt-10 w-full max-w-md">
+        <div className="h-1.5 rounded-full overflow-hidden flex">{cl.map(ch=><div key={ch.key} className="h-full" style={{width:'25%',backgroundColor:ch.color,opacity:.4}}/>)}</div>
+        <p className="text-center text-text-muted text-xs mt-2">角色人格光谱</p>
+      </div>
+      <div className="absolute bottom-4 left-0 right-0 text-center"><p className="text-text-muted text-xs opacity-50">AI 生成剧情测试 Demo / 原创虚构剧集素材</p></div>
+    </div>
+  </div>);
+}
+</script>
+
+<!-- ==================== DRAMA SELECT PAGE ==================== -->
+<script type="text/babel">
+function DramaSelect({onNavigate}){
+  const{resetQuiz}=useQuiz();
+  const[mode,setMode]=useState('review');
+  const cl=Object.values(characters);
+  return(<div className="min-h-screen bg-bg-primary relative overflow-hidden">
+    <div className="absolute inset-0"><div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-bg-primary via-bg-secondary to-bg-primary"/><div className="absolute top-1/3 right-1/4 w-72 h-72 bg-accent-green/3 rounded-full blur-3xl"/></div>
+    <div className="film-grain absolute inset-0"/>
+    <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="max-w-4xl w-full anim-slide-up">
+        <button onClick={()=>onNavigate('home')} className="flex items-center gap-2 text-text-muted hover:text-text-primary text-sm mb-8 transition-colors"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>返回首页</button>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-3">
+            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-bg-card shadow-2xl">
+              <div className="relative aspect-[16/10] bg-gradient-to-br from-slate-800 via-blue-950 to-slate-900 overflow-hidden">
+                <div className="film-grain absolute inset-0"/><div className="scanlines absolute inset-0"/>
+                <div className="absolute inset-0 flex items-center justify-center"><div className="text-center"><div className="text-7xl mb-4 opacity-20 select-none">✉️</div><h2 className="font-display text-5xl font-black text-white/90 text-shadow-title tracking-wide">雾港来信</h2><div className="mt-3 flex items-center justify-center gap-2"><div className="h-px w-12 bg-accent-green/50"/><span className="text-accent-green text-xs">悬疑 · 群像 · 情感</span><div className="h-px w-12 bg-accent-green/50"/></div></div></div>
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-bg-card to-transparent"/>
+                <div className="absolute bottom-6 left-6"><div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center"><svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+              </div>
+              <div className="p-6">
+                <div className="flex flex-wrap gap-2 mb-4">{dramaInfo.type.split(' / ').map((t,i)=><span key={i} className="px-3 py-1 text-xs rounded-full bg-white/5 border border-white/10 text-text-secondary">{t}</span>)}</div>
+                <p className="text-text-secondary text-sm leading-relaxed mb-4">{dramaInfo.description}</p>
+                <div className="flex items-center gap-3"><span className="text-text-muted text-xs">角色：</span>{cl.map(ch=><span key={ch.key} className="text-xs px-2 py-0.5 rounded" style={{color:ch.color,backgroundColor:`${ch.color}15`}}>{ch.name}</span>)}</div>
+              </div>
+            </div>
+          </div>
+          <div className="lg:col-span-2">
+            <div className="bg-bg-card border border-white/10 rounded-2xl p-6">
+              <h3 className="font-display text-lg font-bold text-text-primary mb-2">选择测试模式</h3>
+              <p className="text-text-muted text-sm mb-6">不同模式会调整 AI 反馈的深度</p>
+              <div className="space-y-3 mb-8">
+                {[{v:'spoiler-free',l:'看前无剧透',d:'适合没有看过《雾港来信》的用户。反馈中不涉及后续剧情。'},{v:'review',l:'看后深度复盘',d:'适合已看过剧集的用户。展示完整原剧切片和深度 AI 分析。'}].map(o=>
+                  <label key={o.v} className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${mode===o.v?'border-accent-green/40 bg-accent-green/5':'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]'}`}>
+                    <input type="radio" name="mode" value={o.v} checked={mode===o.v} onChange={()=>setMode(o.v)} className="mt-1 accent-accent-green"/>
+                    <div><p className="text-text-primary text-sm font-medium">{o.l}</p><p className="text-text-muted text-xs mt-1">{o.d}</p></div>
+                  </label>
+                )}
+              </div>
+              <button onClick={()=>{resetQuiz();onNavigate('quiz')}} className="w-full py-4 bg-accent-green text-bg-primary font-bold text-base rounded-xl hover:bg-accent-green-hover transition-all duration-300 pulse-glow">开始《雾港来信》剧格测试</button>
+              <p className="text-center text-text-muted text-xs mt-4">共 5 道剧情选择题 · 预计 3-5 分钟</p>
+            </div>
+          </div>
+        </div>
+        <div className="text-center mt-8"><p className="text-text-muted text-xs opacity-50">AI 生成剧情测试 Demo / 原创虚构剧集素材</p></div>
+      </div>
+    </div>
+  </div>);
+}
+</script>
+
+<!-- ==================== QUIZ PAGE ==================== -->
+<script type="text/babel">
+function Quiz({onNavigate}){
+  const{scores,currentQuestion,showingFeedback,selectedAnswer,quizCompleted,selectAnswer,goToNext,resetQuiz}=useQuiz();
+  const[hovered,setHovered]=useState(null);
+  const[justSel,setJustSel]=useState(null);
+  const[animK,setAnimK]=useState(0);
+  useEffect(()=>{if(quizCompleted)onNavigate('results')},[quizCompleted]);
+  useEffect(()=>{setAnimK(p=>p+1)},[currentQuestion,showingFeedback]);
+  const q=questions[currentQuestion];
+  const handleSel=i=>{if(showingFeedback)return;setJustSel(i);setTimeout(()=>selectAnswer(i,q.options[i].mapping),300)};
+  const sl=selectedAnswer!==null?q.options[selectedAnswer].slice:null;
+  const fc=selectedAnswer!==null?q.options[selectedAnswer].feedbackCharacter:null;
+  if(quizCompleted)return null;
+  return(<div className="min-h-screen bg-bg-primary relative">
+    <div className="absolute inset-0 bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary"/><div className="film-grain absolute inset-0"/>
+    <div className="relative z-10 min-h-screen flex flex-col">
+      <div className="flex items-center justify-between px-8 py-4 border-b border-white/5">
+        <button onClick={()=>{resetQuiz();onNavigate('home')}} className="flex items-center gap-2 text-text-muted hover:text-text-primary text-sm transition-colors"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>退出测试</button>
+        <div className="flex items-center gap-3"><span className="text-text-muted text-sm">第 <span className="text-accent-green font-bold">{currentQuestion+1}</span> / 5 题</span>
+          <div className="flex gap-1.5">{[0,1,2,3,4].map(i=><div key={i} className={`w-8 h-1.5 rounded-full transition-all duration-500 ${i<currentQuestion?'bg-accent-green':i===currentQuestion?'bg-accent-green/60':'bg-white/10'}`}/>)}</div>
+        </div>
+        <div className="w-20"/>
+      </div>
+      <div className="flex-1 flex">
+        {!showingFeedback?(
+          <div key={`q${animK}`} className="flex-1 flex anim-slide-left">
+            <div className="w-1/2 p-8 flex items-center justify-center"><div className="w-full max-w-xl"><MockVideoPlayer title={`${q.episode}｜${q.title}`} episode={q.episode} time="00:00" sceneDesc={q.sceneDesc} sceneGradient={q.sceneGradient} sceneEmoji={q.sceneEmoji} progress={0}/></div></div>
+            <div className="w-1/2 p-8 flex items-center justify-center border-l border-white/5"><div className="w-full max-w-lg">
+              <div className="flex items-center gap-2 mb-4"><span className="bg-accent-green/10 text-accent-green text-xs px-2.5 py-1 rounded-full border border-accent-green/20">{q.episode}</span><span className="text-text-muted text-xs">{q.title}</span></div>
+              <p className="text-text-secondary text-sm leading-relaxed mb-2">{q.background}</p>
+              <h2 className="text-xl font-display font-bold text-text-primary mb-6">{q.question}</h2>
+              <div className="space-y-3">{q.options.map((opt,i)=>(<button key={i} onClick={()=>handleSel(i)} onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)} className={`option-card w-full text-left p-4 rounded-xl border ${justSel===i?'selected border-accent-green/60 bg-accent-green/10':hovered===i?'border-white/20 bg-white/[0.06]':'border-white/10 bg-white/[0.02]'}`}>
+                <div className="flex items-center gap-3"><span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${justSel===i?'bg-accent-green text-bg-primary':'bg-white/10 text-text-muted'}`}>{String.fromCharCode(65+i)}</span><span className="text-sm text-text-primary">{opt.text}</span></div>
+              </button>))}</div>
+            </div></div>
+          </div>
+        ):(
+          <div key={`f${animK}`} className="flex-1 flex anim-slide-right">
+            <div className="w-1/2 p-8 flex items-center justify-center"><div className="w-full max-w-xl"><MockVideoPlayer title={sl.title} episode={q.episode} time={sl.time} sceneDesc={sl.scene} sceneGradient={q.sceneGradient} character={fc} subtitle={sl.subtitle} progress={65} showLabel={true}/></div></div>
+            <div className="w-1/2 p-8 flex items-center justify-center border-l border-white/5"><div className="w-full max-w-lg">
+              <div className="anim-slide-up"><p className="text-text-muted text-sm mb-1">你和</p><p className="text-2xl font-display font-bold" style={{color:characters[fc].color}}>「{characters[fc].name}」</p><p className="text-text-secondary text-sm mt-1">做出了相似选择</p></div>
+              <div className="anim-slide-up d200 mt-6 rounded-xl border border-white/10 bg-bg-card p-5 space-y-4">
+                <div><p className="text-text-muted text-xs mb-1">选择倾向</p><p className="text-text-primary text-sm font-medium">{q.options[selectedAnswer].text}</p></div><div className="h-px bg-white/5"/>
+                <div><p className="text-text-muted text-xs mb-1">对应角色</p><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{backgroundColor:characters[fc].color}}/><span className="text-text-primary text-sm font-medium">{characters[fc].name}：{characters[fc].title}</span></div></div><div className="h-px bg-white/5"/>
+                <div><p className="text-text-muted text-xs mb-1">人格关键词</p><div className="flex flex-wrap gap-1.5">{characters[fc].keywords.map((kw,i)=><span key={i} className="text-xs px-2 py-0.5 rounded-full" style={{color:characters[fc].color,backgroundColor:`${characters[fc].color}15`,border:`1px solid ${characters[fc].color}30`}}>{kw}</span>)}</div></div><div className="h-px bg-white/5"/>
+                <div><p className="text-text-muted text-xs mb-1">AI 分析</p><p className="text-text-secondary text-sm leading-relaxed">{sl.analysis}</p></div>
+              </div>
+              <div className="anim-fade-in d500 mt-6"><button onClick={goToNext} className="w-full py-3.5 bg-accent-green text-bg-primary font-bold rounded-xl hover:bg-accent-green-hover transition-all duration-300">{currentQuestion>=4?'查看我的剧格结果':'继续下一题'}</button></div>
+            </div></div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>);
+}
+</script>
+
+<!-- ==================== RESULTS PAGE ==================== -->
+<script type="text/babel">
+function Results({onNavigate}){
+  const{scores,quizCompleted,resetQuiz}=useQuiz();
+  const[anim,setAnim]=useState(false);
+  useEffect(()=>{if(!quizCompleted)onNavigate('home');setTimeout(()=>setAnim(true),100)},[quizCompleted]);
+  const total=Object.values(scores).reduce((a,b)=>a+b,0)||1;
+  const pct={};Object.entries(scores).forEach(([k,v])=>{pct[k]=Math.round((v/total)*100)});
+  const mx=Math.max(...Object.values(scores));
+  const top=Object.entries(scores).filter(([,v])=>v===mx).map(([k])=>k);
+  const pc=top[0],pr=results[pc],dual=top.length>1,sc=dual?top[1]:null;
+  const co=['linche','xuzhixia','zhouye','guchen'];
+  if(!quizCompleted)return null;
+  return(<div className="min-h-screen bg-bg-primary relative overflow-hidden">
+    <div className="absolute inset-0"><div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full blur-3xl" style={{backgroundColor:`${characters[pc].color}08`}}/><div className="absolute bottom-1/3 right-1/4 w-72 h-72 bg-accent-green/5 rounded-full blur-3xl"/></div>
+    <div className="film-grain absolute inset-0"/>
+    <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="max-w-5xl w-full anim-slide-up">
+        <div className="text-center mb-10"><span className="anim-fade-in d200 text-accent-green text-sm font-medium">《雾港来信》剧格测试完成</span><h1 className="anim-slide-up d400 font-display text-3xl md:text-4xl font-bold text-text-primary mt-3">你的《雾港来信》剧格画像</h1></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="anim-slide-up d500 rounded-2xl border border-white/10 bg-bg-card p-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-20" style={{backgroundColor:characters[pc].color}}/>
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <span className="text-xs px-3 py-1 rounded-full font-medium" style={{color:characters[pc].color,backgroundColor:`${characters[pc].color}15`,border:`1px solid ${characters[pc].color}30`}}>主剧格</span>
+                  {dual&&sc&&<span className="text-xs px-3 py-1 rounded-full font-medium" style={{color:characters[sc].color,backgroundColor:`${characters[sc].color}15`,border:`1px solid ${characters[sc].color}30`}}>副剧格：{characters[sc].name}</span>}
+                </div>
+                <h2 className="font-display text-3xl font-bold mb-1" style={{color:characters[pc].color}}>{pr.name}型：{pr.title}</h2>
+                <p className="text-text-primary text-lg font-display italic mt-4 mb-4 leading-relaxed">"{pr.mainQuote}"</p>
+                <p className="text-text-secondary text-sm leading-relaxed mb-4">{pr.explanation}</p>
+                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-text-muted text-xs mb-1">命运提示</p><p className="text-text-secondary text-sm leading-relaxed">{pr.fateHint}</p></div>
+                <div className="flex flex-wrap gap-2 mt-4">{characters[pc].keywords.map((kw,i)=><span key={i} className="text-xs px-3 py-1 rounded-full" style={{color:characters[pc].color,backgroundColor:`${characters[pc].color}15`,border:`1px solid ${characters[pc].color}25`}}>{kw}</span>)}</div>
+              </div>
+            </div>
+            <div className="anim-slide-up d700 rounded-2xl border border-white/10 bg-bg-card p-6">
+              <h3 className="text-sm font-medium text-text-muted mb-5">角色人格光谱</h3>
+              <div className="space-y-5">{co.map((k,i)=>{const ch=characters[k];const p=pct[k];return(<div key={k}>
+                <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{backgroundColor:ch.color}}/><span className="text-sm text-text-primary font-medium">{ch.name}</span><span className="text-xs text-text-muted">{ch.title}</span></div><span className="text-sm font-bold font-mono" style={{color:ch.color}}>{p}%</span></div>
+                <div className="h-3 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full spectrum-bar" style={{backgroundColor:ch.color,width:anim?`${p}%`:'0%',transition:`width 1.2s ease-out ${.5+i*.15}s`}}/></div>
+              </div>)})}</div>
+              <div className="mt-6 h-4 rounded-full overflow-hidden flex">{co.map(k=><div key={k} style={{backgroundColor:characters[k].color,width:anim?`${pct[k]}%`:'0%',transition:'width 1.2s ease-out 1s'}} className="h-full"/>)}</div>
+              <div className="flex justify-between mt-1.5">{co.map(k=><span key={k} className="text-[10px]" style={{color:characters[k].color}}>{characters[k].name} {pct[k]}%</span>)}</div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="anim-slide-up d800 rounded-2xl border border-white/10 bg-bg-card p-6">
+              <h3 className="text-sm font-medium text-text-primary mb-4">推荐高共振片段</h3>
+              <div className="space-y-2.5">{pr.recommendedScenes.map((s,i)=><div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-colors cursor-pointer">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0"><svg className="w-4 h-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+                <div className="min-w-0"><p className="text-text-primary text-xs font-medium truncate">{s}</p><p className="text-text-muted text-[10px]">高共振</p></div>
+              </div>)}</div>
+            </div>
+            <div className="anim-slide-up d1000 space-y-3">
+              <button onClick={()=>onNavigate('share')} className="w-full py-3.5 bg-accent-green text-bg-primary font-bold rounded-xl hover:bg-accent-green-hover transition-all duration-300">生成我的剧格卡</button>
+              <button onClick={()=>onNavigate('share')} className="w-full py-3.5 bg-white/5 border border-white/10 text-text-primary font-medium rounded-xl hover:bg-white/10 transition-all duration-300">邀请好友测试</button>
+              <button onClick={()=>{resetQuiz();onNavigate('home')}} className="w-full py-3 text-text-muted text-sm hover:text-text-primary transition-colors">重置测试</button>
+            </div>
+          </div>
+        </div>
+        <div className="text-center mt-10"><p className="text-text-muted text-xs opacity-50">AI 生成剧情测试 Demo / 原创虚构剧集素材</p></div>
+      </div>
+    </div>
+  </div>);
+}
+</script>
+
+<!-- ==================== SHARE CARD PAGE ==================== -->
+<script type="text/babel">
+function ShareCard({onNavigate}){
+  const{scores,quizCompleted,resetQuiz}=useQuiz();
+  const[anim,setAnim]=useState(false);
+  useEffect(()=>{if(!quizCompleted)onNavigate('home');setTimeout(()=>setAnim(true),200)},[quizCompleted]);
+  const total=Object.values(scores).reduce((a,b)=>a+b,0)||1;
+  const pct={};Object.entries(scores).forEach(([k,v])=>{pct[k]=Math.round((v/total)*100)});
+  const mx=Math.max(...Object.values(scores));
+  const top=Object.entries(scores).filter(([,v])=>v===mx).map(([k])=>k);
+  const pc=top[0],pr=results[pc];
+  const fc=Object.keys(characters).filter(k=>k!==pc)[0],fr=results[fc];
+  const pk1=`${pc}-${fc}`,pk2=`${fc}-${pc}`;
+  const pi=pairDescriptions[pk1]||pairDescriptions[pk2]||{label:'意外交集',relation:'看似不同但互补的组合',conflict:'你们的决策方式截然不同',story:'正因为不同，你们能互相补足盲区。'};
+  const co=['linche','xuzhixia','zhouye','guchen'];
+  if(!quizCompleted)return null;
+  return(<div className="min-h-screen bg-bg-primary relative overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary"/><div className="film-grain absolute inset-0"/>
+    <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-12">
+      <div className="max-w-3xl w-full anim-slide-up">
+        <button onClick={()=>onNavigate('results')} className="flex items-center gap-2 text-text-muted hover:text-text-primary text-sm mb-6 transition-colors"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>返回结果</button>
+        <div className="rounded-2xl border border-white/10 bg-bg-card overflow-hidden shadow-2xl">
+          <div className="relative p-8 text-center overflow-hidden"><div className="absolute inset-0 opacity-10" style={{background:`radial-gradient(circle at 50% 50%,${characters[pc].color},transparent 70%)`}}/><div className="relative"><p className="text-accent-green text-xs font-medium mb-2">剧格 AI DramaType</p><h2 className="font-display text-2xl font-bold text-text-primary mb-1">《雾港来信》剧格画像</h2><p className="text-text-muted text-sm">每一次选择，都暴露你站在哪个角色的命运里。</p></div></div>
+          <div className="px-8 pb-6"><div className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg" style={{backgroundColor:`${characters[pc].color}20`,color:characters[pc].color}}>{pc==='linche'?'🔍':pc==='xuzhixia'?'💛':pc==='zhouye'?'🔥':'⚖️'}</div>
+              <div><p className="text-text-muted text-xs">你的剧格</p><p className="font-display font-bold" style={{color:characters[pc].color}}>{pr.name}型：{pr.title}</p></div>
+            </div>
+            <p className="text-text-secondary text-sm italic leading-relaxed">"{pr.mainQuote}"</p>
+            <div className="mt-4 space-y-2">{co.map(k=><div key={k} className="flex items-center gap-2"><span className="text-[10px] text-text-muted w-10 shrink-0">{characters[k].name}</span><div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{backgroundColor:characters[k].color,width:anim?`${pct[k]}%`:'0%',transition:'width 1s ease-out .5s'}}/></div><span className="text-[10px] font-mono w-8 text-right" style={{color:characters[k].color}}>{pct[k]}%</span></div>)}</div>
+          </div></div>
+          <div className="px-8"><div className="border-t border-dashed border-white/10"/></div>
+          <div className="px-8 py-6"><h3 className="text-sm font-medium text-text-primary mb-4">好友对照</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="rounded-xl border p-4 text-center" style={{borderColor:`${characters[pc].color}30`,backgroundColor:`${characters[pc].color}05`}}><p className="text-text-muted text-xs mb-1">你</p><p className="font-display font-bold text-sm" style={{color:characters[pc].color}}>{pr.title}</p></div>
+              <div className="rounded-xl border p-4 text-center" style={{borderColor:`${characters[fc].color}30`,backgroundColor:`${characters[fc].color}05`}}><p className="text-text-muted text-xs mb-1">好友</p><p className="font-display font-bold text-sm" style={{color:characters[fc].color}}>{fr.title}</p></div>
+            </div>
+            <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4 space-y-3">
+              <div><p className="text-text-muted text-xs">关系判断</p><p className="text-text-primary text-sm font-medium">{pi.relation}</p></div>
+              <div><p className="text-text-muted text-xs">冲突点</p><p className="text-text-secondary text-sm">{pi.conflict}</p></div>
+              <div><p className="text-text-muted text-xs">剧情关系</p><p className="text-text-secondary text-sm">{pi.story}</p></div>
+            </div>
+          </div>
+          <div className="px-8 pb-6"><div className="flex items-center justify-between p-4 rounded-xl bg-accent-green/5 border border-accent-green/20">
+            <div><p className="text-accent-green text-xs font-medium">扫码测试你的剧格</p><p className="text-text-muted text-[10px] mt-0.5">剧格 AI DramaType · 腾讯视频</p></div>
+            <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center"><div className="text-2xl font-mono text-black font-bold">QR</div></div>
+          </div></div>
+        </div>
+        <div className="anim-fade-in d800 flex flex-col sm:flex-row gap-3 mt-6 justify-center">
+          <button onClick={()=>{resetQuiz();onNavigate('home')}} className="px-8 py-3 bg-accent-green text-bg-primary font-bold rounded-xl hover:bg-accent-green-hover transition-all duration-300">重新测试</button>
+          <button onClick={()=>onNavigate('results')} className="px-8 py-3 bg-white/5 border border-white/10 text-text-primary font-medium rounded-xl hover:bg-white/10 transition-all duration-300">返回结果</button>
+        </div>
+        <div className="text-center mt-8"><p className="text-text-muted text-xs opacity-50">AI 生成剧情测试 Demo / 原创虚构剧集素材</p></div>
+      </div>
+    </div>
+  </div>);
+}
+</script>
+
+<!-- ==================== AGENT CONSOLE ==================== -->
+<script type="text/babel">
+const AGENT_STEPS=[
+  {id:1,label:'剧情节点识别',desc:'AI 从剧情简介、字幕和视频段落中识别角色必须做选择的关键时刻。',icon:'🎯'},
+  {id:2,label:'冲突关系识别',desc:'AI 判断节点中的核心冲突，例如信任、背叛、保护、规则、牺牲。',icon:'⚡'},
+  {id:3,label:'角色行为建模',desc:'AI 分析林澈、许知夏、周野、顾沉在不同节点中的行动方式。',icon:'🧬'},
+  {id:4,label:'测试题生成',desc:'AI 将剧情节点转化为用户可回答的选择题，并生成 4 个选项。',icon:'📝'},
+  {id:5,label:'原剧切片匹配',desc:'AI 为每个选项匹配相似角色行为和对应原剧切片候选。',icon:'🎬'},
+  {id:6,label:'剧透等级判断',desc:'AI 判断题目和切片是否适合看前无剧透模式或看后复盘模式。',icon:'🔍'},
+  {id:7,label:'运营审核发布',desc:'运营审核 AI 生成结果后，将互动测试发布到剧集页或活动页。',icon:'✅'},
+];
+const AGENT_INPUTS=[
+  {label:'剧情简介',icon:'📖',desc:'十年前雾港的未解旧案，一封没有署名的来信寄到四位故人手中…'},
+  {label:'角色设定',icon:'👥',desc:'林澈（冷静观察者）、许知夏（共情守护者）、周野（冒险破局者）、顾沉（秩序裁决者）'},
+  {label:'字幕文本',icon:'📄',desc:'6 集完整字幕，约 42,000 字'},
+  {label:'视频切片',icon:'🎥',desc:'关键场景视频片段 × 24'},
+  {label:'用户弹幕 / 评论',icon:'💬',desc:'弹幕热词数据 × 15,000+ 条'},
+  {label:'官方物料',icon:'📋',desc:'海报、预告片、剧情分集简介'},
+];
+const AGENT_RESULTS=[
+  {label:'已识别剧情节点',value:'5 个',color:'#60a5fa'},
+  {label:'已生成剧情选择题',value:'5 道',color:'#fbbf24'},
+  {label:'已建立角色行为模型',value:'4 类',color:'#f87171'},
+  {label:'已匹配切片候选',value:'8 个',color:'#2bcb79'},
+  {label:'已生成结果文案',value:'4 套',color:'#a78bfa'},
+  {label:'剧透等级',value:'看后深度复盘',color:'#f472b6'},
+  {label:'状态',value:'待运营审核',color:'#fb923c'},
+];
+
+function AgentConsole({onNavigate}){
+  const[phase,setPhase]=useState('idle'); // idle | generating | done
+  const[step,setStep]=useState(0); // 0-7
+  const[progress,setProgress]=useState(0);
+  const timerRef=React.useRef(null);
+
+  const startGenerate=()=>{
+    setPhase('generating');
+    setStep(0);
+    setProgress(0);
+    let i=0;
+    const tick=()=>{
+      i++;
+      setStep(i);
+      setProgress(Math.round((i/7)*100));
+      if(i<7){timerRef.current=setTimeout(tick,900);}
+      else{setPhase('done');}
+    };
+    timerRef.current=setTimeout(tick,600);
+  };
+  const reset=()=>{
+    if(timerRef.current)clearTimeout(timerRef.current);
+    setPhase('idle');setStep(0);setProgress(0);
+  };
+  useEffect(()=>()=>{if(timerRef.current)clearTimeout(timerRef.current);},[]);
+
+  return(<div className="min-h-screen bg-bg-primary relative overflow-hidden">
+    <div className="absolute inset-0"><div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-bg-primary via-bg-secondary to-bg-primary"/><div className="absolute top-1/4 left-1/3 w-96 h-96 bg-accent-green/3 rounded-full blur-3xl"/><div className="absolute bottom-1/4 right-1/3 w-72 h-72 bg-blue-500/3 rounded-full blur-3xl"/></div>
+    <div className="film-grain absolute inset-0"/>
+    <div className="relative z-10 min-h-screen flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-white/5 bg-bg-primary/80 backdrop-blur-sm">
+        <button onClick={()=>onNavigate('home')} className="flex items-center gap-2 text-text-muted hover:text-text-primary text-sm transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>返回首页
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-accent-green text-sm font-medium">AI 剧情测试生成台</span>
+          <span className="text-text-muted text-xs">DramaTest Agent Console</span>
+        </div>
+        <div className="flex items-center gap-3">
+          {phase==='done'&&<button onClick={()=>onNavigate('select')} className="px-4 py-1.5 bg-accent-green/10 border border-accent-green/30 text-accent-green text-xs rounded-lg hover:bg-accent-green/20 transition-colors">进入用户端预览 →</button>}
+          <button onClick={reset} className="px-4 py-1.5 bg-white/5 border border-white/10 text-text-muted text-xs rounded-lg hover:bg-white/10 hover:text-text-primary transition-colors">重置</button>
+        </div>
+      </div>
+
+      {/* Demo banner */}
+      <div className="px-6 py-2 bg-accent-green/5 border-b border-accent-green/10">
+        <p className="text-accent-green text-xs text-center">当前为 Demo 静态模拟，真实产品中可由多模态 AI + LLM 完成剧情节点识别、题目生成、切片匹配和结果文案生成。</p>
+      </div>
+
+      {/* 3-column layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Input Materials */}
+        <div className="w-[28%] border-r border-white/5 overflow-y-auto p-5">
+          <h3 className="text-sm font-medium text-text-primary mb-1">输入素材</h3>
+          <p className="text-text-muted text-xs mb-4">为 AI 提供剧集原始素材</p>
+
+          <div className="mb-5">
+            <div className="bg-bg-card border border-white/10 rounded-xl p-4 mb-3">
+              <div className="flex items-center gap-2 mb-2"><span className="text-lg">✉️</span><span className="text-text-primary text-sm font-medium">《雾港来信》</span></div>
+              <span className="text-xs px-2 py-0.5 rounded bg-white/5 text-text-muted border border-white/5">悬疑 / 群像 / 情感抉择</span>
+            </div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-text-muted text-xs">生成模式：</span>
+              <span className="text-xs px-2.5 py-1 rounded-lg bg-accent-green/10 text-accent-green border border-accent-green/20">看后深度复盘</span>
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            {AGENT_INPUTS.map((inp,i)=>(
+              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
+                <span className="text-base mt-0.5 shrink-0">{inp.icon}</span>
+                <div className="min-w-0"><p className="text-text-primary text-xs font-medium">{inp.label}</p><p className="text-text-muted text-[11px] mt-0.5 leading-relaxed">{inp.desc}</p></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Center: AI Process */}
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col">
+          <h3 className="text-sm font-medium text-text-primary mb-1">AI 生成流程</h3>
+          <p className="text-text-muted text-xs mb-5">7 步自动化生成，从剧集素材到互动测试</p>
+
+          {/* Progress bar */}
+          <div className="mb-5">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-text-muted text-xs">生成进度</span>
+              <span className="text-accent-green text-xs font-mono font-medium">{progress}%</span>
+            </div>
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full bg-accent-green rounded-full transition-all duration-500" style={{width:`${progress}%`}}/>
+            </div>
+          </div>
+
+          {/* Steps */}
+          <div className="flex-1 space-y-2.5">
+            {AGENT_STEPS.map((s,i)=>{
+              const isActive=phase==='generating'&&step===i;
+              const isDone=phase==='generating'&&step>i||phase==='done';
+              const isIdle=phase==='idle'||(phase==='generating'&&step<i);
+              return(<div key={s.id} className={`relative flex items-start gap-3 p-3.5 rounded-xl border transition-all duration-500 ${
+                isActive?'border-accent-green/40 bg-accent-green/5':''
+              }${isDone?' border-green-800/40 bg-green-900/10':''}${isIdle?' border-white/5 bg-white/[0.01]':''}`}>
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm shrink-0 transition-all duration-300 ${
+                  isActive?'bg-accent-green/20 text-accent-green scale-110':''
+                }${isDone?'bg-green-800/30 text-green-400':''}${isIdle?'bg-white/5 text-text-muted':''}`}>
+                  {isDone?<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg>:<span>{s.icon}</span>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${isActive?'text-accent-green':''}${isDone?'text-green-400':''}${isIdle?'text-text-muted':''}`}>{s.id}. {s.label}</span>
+                    {isActive&&<span className="text-accent-green text-[10px] animate-pulse">处理中...</span>}
+                  </div>
+                  {(isActive||isDone)&&<p className="text-text-secondary text-[11px] mt-1 leading-relaxed anim-fade-in">{s.desc}</p>}
+                </div>
+              </div>);
+            })}
+          </div>
+
+          {/* Action button */}
+          <div className="mt-5 pt-4 border-t border-white/5">
+            {phase==='idle'&&<button onClick={startGenerate} className="w-full py-3.5 bg-accent-green text-bg-primary font-bold rounded-xl hover:bg-accent-green-hover transition-all duration-300 pulse-glow">开始生成</button>}
+            {phase==='generating'&&<button disabled className="w-full py-3.5 bg-accent-green/30 text-bg-primary font-bold rounded-xl cursor-wait flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-bg-primary/30 border-t-bg-primary rounded-full animate-spin"/>生成中...</button>}
+            {phase==='done'&&<button onClick={()=>onNavigate('select')} className="w-full py-3.5 bg-accent-green text-bg-primary font-bold rounded-xl hover:bg-accent-green-hover transition-all duration-300 pulse-glow">生成完成，进入用户端预览 →</button>}
+          </div>
+        </div>
+
+        {/* Right: Results */}
+        <div className="w-[30%] border-l border-white/5 overflow-y-auto p-5">
+          <h3 className="text-sm font-medium text-text-primary mb-1">生成结果</h3>
+          <p className="text-text-muted text-xs mb-4">{phase==='done'?'生成完成，可进入用户端预览':'等待 AI 生成...'}</p>
+
+          {/* Result cards */}
+          <div className={`space-y-2 mb-6 transition-opacity duration-500 ${phase==='done'?'opacity-100':'opacity-30'}`}>
+            {AGENT_RESULTS.map((r,i)=>(
+              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <span className="text-text-secondary text-xs">{r.label}</span>
+                <span className="text-xs font-medium font-mono" style={{color:r.color}}>{r.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Preview section */}
+          <div className={`transition-opacity duration-500 ${phase==='done'?'opacity-100':'opacity-20'}`}>
+            <h4 className="text-xs font-medium text-text-primary mb-3">生成预览 — 剧情节点示例</h4>
+            <div className="bg-bg-card border border-white/10 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">✉️</span>
+                <span className="text-text-primary text-sm font-medium">被藏起的来信</span>
+              </div>
+              <div><p className="text-text-muted text-[10px] mb-1">生成题目</p><p className="text-text-secondary text-xs leading-relaxed">你发现朋友偷偷藏起了一封关键来信，你会怎么做？</p></div>
+              <div className="h-px bg-white/5"/>
+              <div><p className="text-text-muted text-[10px] mb-2">选项映射</p>
+                <div className="space-y-1.5">
+                  {[[{opt:'当场质问',char:'周野',logic:'直接破局',color:'#f87171'}],[{opt:'暗中调查',char:'林澈',logic:'延迟观察',color:'#60a5fa'}],[{opt:'替他隐瞒',char:'许知夏',logic:'关系保护',color:'#fbbf24'}],[{opt:'交给他人',char:'顾沉',logic:'规则处理',color:'#a78bfa'}]].map(([{opt,char,logic,color}],i)=>(
+                    <div key={i} className="flex items-center gap-2 text-[11px]">
+                      <span className="text-text-muted font-mono w-3">{String.fromCharCode(65+i)}.</span>
+                      <span className="text-text-secondary">{opt}</span>
+                      <svg className="w-3 h-3 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                      <span style={{color}} className="font-medium">{char}</span>
+                      <span className="text-text-muted">/ {logic}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="h-px bg-white/5"/>
+              <div><p className="text-text-muted text-[10px] mb-1">切片候选</p><p className="text-accent-green text-xs">第 2 集 13:42｜没有拆穿的来信</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+</script>
+
+<!-- ==================== APP ==================== -->
+<script type="text/babel">
+function App(){
+  const[page,setPage]=useState('home');
+  const[trans,setTrans]=useState(false);
+  const nav=useCallback(t=>{setTrans(true);setTimeout(()=>{setPage(t);window.location.hash=t==='home'?'':t;window.scrollTo(0,0);setTrans(false)},200)},[]);
+  useEffect(()=>{const h=()=>{const v=window.location.hash.slice(1);if(v&&['home','select','quiz','results','share','agent'].includes(v))setPage(v)};window.addEventListener('hashchange',h);h();return()=>window.removeEventListener('hashchange',h)},[]);
+  const pg={home:Home,select:DramaSelect,quiz:Quiz,results:Results,share:ShareCard,agent:AgentConsole};
+  const Page=pg[page]||Home;
+  return <div style={{opacity:trans?0:1,transition:'opacity .2s ease'}}><Page onNavigate={nav}/></div>;
+}
+const root=ReactDOM.createRoot(document.getElementById('root'));
+root.render(<QuizProvider><App/></QuizProvider>);
+</script>
+</body>
+</html>
