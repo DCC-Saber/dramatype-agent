@@ -66,6 +66,7 @@ def _get_llm(settings):
             api_key=api_key,
             temperature=0.3,
             max_tokens=8192,
+            timeout=60,
         )
 
     try:
@@ -80,6 +81,7 @@ def _get_llm(settings):
         "api_key": api_key,
         "temperature": 0.3,
         "max_tokens": 8192,
+        "timeout": 60,
     }
     if base_url:
         kwargs["base_url"] = base_url
@@ -166,20 +168,21 @@ def generate_content_pack_with_langchain(
         HumanMessage(content=user_prompt),
     ]
 
-    # Strategy 1: Try structured output
+    # Strategy 1: Try structured output (only for anthropic, others skip to avoid double call)
     cp = None
     structured_error = None
-    try:
-        logger.info("尝试 structured output 方式...")
-        structured_llm = llm.with_structured_output(content_pack_schema)
-        result: ContentPack = structured_llm.invoke(messages)
-        cp = result.model_dump()
-        logger.info("structured output 成功。")
-    except Exception as exc:
-        structured_error = str(exc)[:200]
-        logger.warning(f"structured output 失败: {structured_error}")
+    if provider == "anthropic":
+        try:
+            logger.info("尝试 structured output 方式...")
+            structured_llm = llm.with_structured_output(content_pack_schema)
+            result: ContentPack = structured_llm.invoke(messages)
+            cp = result.model_dump()
+            logger.info("structured output 成功。")
+        except Exception as exc:
+            structured_error = str(exc)[:200]
+            logger.warning(f"structured output 失败: {structured_error}")
 
-    # Strategy 2: Fallback to raw text + JSON parse
+    # Strategy 2: Raw text + JSON parse (used for all non-anthropic, or as fallback)
     if cp is None:
         logger.info("尝试 raw text + JSON parse 方式...")
         try:
